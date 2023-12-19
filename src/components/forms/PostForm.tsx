@@ -18,12 +18,24 @@ import FileUploader from "../shared/FileUploader";
 import { Input } from "../ui/input";
 import { PostValidation } from "@/lib/validation";
 import { Models } from "appwrite";
+import { useUserContext } from "@/context/AuthContext";
+import { toast } from "../ui/use-toast";
+import { useNavigate } from "react-router-dom";
+import { useCreatePost } from "@/lib/react-query/queriesAndMutations";
+import Loader from "../shared/Loader";
 
 type PostFormProps = {
   post?: Models.Document;
 };
 
 const PostForm = ({ post }: PostFormProps) => {
+  const navigate = useNavigate();
+
+  const { mutateAsync: createPost, isPending: isLoadingCreate } =
+    useCreatePost();
+
+  const { user } = useUserContext();
+
   const form = useForm<z.infer<typeof PostValidation>>({
     resolver: zodResolver(PostValidation),
     defaultValues: {
@@ -35,8 +47,19 @@ const PostForm = ({ post }: PostFormProps) => {
   });
 
   // 2. Define a submit handler.
-  function onSubmit(values: z.infer<typeof PostValidation>) {
-    console.log(values);
+  async function onSubmit(values: z.infer<typeof PostValidation>) {
+    const newPost = await createPost({
+      ...values,
+      userId: user.id,
+    });
+
+    if (!newPost) {
+      toast({
+        title: "Please try again.",
+      });
+    }
+
+    navigate("/");
   }
 
   return (
@@ -119,7 +142,7 @@ const PostForm = ({ post }: PostFormProps) => {
             type="submit"
             className="shad-button_primary whitespace-nowrap"
           >
-            Submit
+            {isLoadingCreate ? <Loader /> : "Submit"}
           </Button>
         </div>
       </form>
